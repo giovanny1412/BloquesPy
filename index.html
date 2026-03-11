@@ -23,22 +23,6 @@
 
     <script src="js/blocks.js"></script>
     <script src="js/generators.js"></script>
-    <script>
-        var workspace = Blockly.inject('blocklyDiv', {toolbox: document.getElementById('toolbox')});
-
-        document.getElementById('btnConectar').addEventListener('click', async () => {
-            const port = await navigator.serial.requestPort();
-            await port.open({ baudRate: 115200 });
-            const writer = port.writable.getWriter();
-            const encoder = new TextEncoder();
-            
-            let code = Blockly.Python.workspaceToCode(workspace);
-            const script = `f=open('main.py','w')\nf.write('''${code}''')\nf.close()\nimport machine\nmachine.reset()\n`;
-            
-            await writer.write(encoder.encode(script));
-            writer.releaseLock();
-            alert("Código cargado en Acarigua Motors ESP32");
-        });
-    </script>
+    <script src="js/app.js"></script>
 </body>
 </html>
