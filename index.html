@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Acarigua Motors - Programación Cuántica y Robótica</title>
+    <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+    <script src="https://unpkg.com/blockly/python_compressed.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="header">
+        <h1>Acarigua Motors: Control de ESP32</h1>
+        <button id="btnConectar">🔌 Conectar y Cargar</button>
+    </div>
+    
+    <div id="blocklyDiv" style="height: 600px; width: 100%;"></div>
+
+    <xml id="toolbox" style="display: none">
+        <block type="al_iniciar"></block>
+        <block type="mover_tiempo"></block>
+        <block type="repetir_patrulla"></block>
+        <block type="si_obstaculo"></block>
+    </xml>
+
+    <script src="js/blocks.js"></script>
+    <script src="js/generators.js"></script>
+    <script>
+        var workspace = Blockly.inject('blocklyDiv', {toolbox: document.getElementById('toolbox')});
+
+        document.getElementById('btnConectar').addEventListener('click', async () => {
+            const port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 115200 });
+            const writer = port.writable.getWriter();
+            const encoder = new TextEncoder();
+            
+            let code = Blockly.Python.workspaceToCode(workspace);
+            const script = `f=open('main.py','w')\nf.write('''${code}''')\nf.close()\nimport machine\nmachine.reset()\n`;
+            
+            await writer.write(encoder.encode(script));
+            writer.releaseLock();
+            alert("Código cargado en Acarigua Motors ESP32");
+        });
+    </script>
+</body>
+</html>
