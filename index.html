@@ -168,30 +168,32 @@ Blockly.Blocks['esp32_listen_on_button'] = {
   }
 };
 
-python.pythonGenerator.forBlock['esp32_listen_on_button'] = function(block, generator) {
-  var btnPin = block.getFieldValue('BTN_PIN');
-  var url = block.getFieldValue('URL');
-  var branch = generator.statementToCode(block, 'DO');
-  generator.definitions_['import_urequests'] = 'import urequests';
 
-  return `btn = machine.Pin(${btnPin}, machine.Pin.IN, machine.Pin.PULL_UP)\n` +
-         `comando_detectado = 0\n` +
-         `while True:\n` +
-         `    if btn.value() == 0: # Botón presionado\n` +
-         `        print("Grabando voz...")\n` +
-         `        audio_buffer = bytearray(32000) # Graba 1 segundo de audio\n` +
-         `        audio_in.readinto(audio_buffer)\n` +
-         `        try:\n` +
-         `            res = urequests.post('${url}', data=audio_buffer, headers={'Content-Type': 'audio/raw'})\n` +
-         `            comando_detectado = int(res.json().get('comando_id', 0))\n` +
-         `            res.close()\n` +
-         `        except:\n` +
-         `            comando_detectado = 0\n` +
-         (branch ? generator.prefixLines(branch, '        ') : '        pass\n') +
-         `        time.sleep(0.5) # Anti-rebote\n` +
-         `    time.sleep(0.1)\n`;
-}; 
       
+      python.pythonGenerator.forBlock['esp32_listen_on_button'] = function(block, generator) {
+        var btnPin = block.getFieldValue('BTN_PIN');
+        var url = block.getFieldValue('URL');
+        var branch = generator.statementToCode(block, 'DO');
+        generator.definitions_['import_urequests'] = 'import urequests';
+
+        // Alinea correctamente el contenido interno evitando errores de indentación
+        return `btn = machine.Pin(${btnPin}, machine.Pin.IN, machine.Pin.PULL_UP)\n` +
+               `comando_detectado = 0\n` +
+               `while True:\n` +
+               `    if btn.value() == 0:\n` +
+               `        print("Grabando voz...")\n` +
+               `        audio_buffer = bytearray(32000)\n` +
+               `        audio_in.readinto(audio_buffer)\n` +
+               `        try:\n` +
+               `            res = urequests.post('${url}', data=audio_buffer, headers={'Content-Type': 'audio/raw'})\n` +
+               `            comando_detectado = int(res.json().get('comando_id', 0))\n` +
+               `            res.close()\n` +
+               `        except:\n` +
+               `            comando_detectado = 0\n` +
+               (branch ? branch : '') +
+               `        time.sleep(0.5)\n` +
+               `    time.sleep(0.1)\n`;
+      };
       // Conectar a WiFi
       Blockly.Blocks['esp32_wifi_connect'] = {
         init: function() {
