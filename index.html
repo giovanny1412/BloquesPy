@@ -172,15 +172,7 @@ Blockly.Blocks['esp32_listen_on_button'] = {
 python.pythonGenerator.forBlock['esp32_listen_on_button'] = function(block, generator) {
   var btnPin = block.getFieldValue('BTN_PIN');
   var url = block.getFieldValue('URL');
-  var branch = generator.statementToCode(block, 'DO');
   generator.definitions_['import_urequests'] = 'import urequests';
-
-  // Si hay bloques internos, aseguramos que tengan 8 espacios de sangría
-  if (branch) {
-    branch = branch.split('\n').map(line => line.trim() ? '        ' + line.trim() : '').join('\n');
-  } else {
-    branch = '        pass\n';
-  }
 
   return `btn = machine.Pin(${btnPin}, machine.Pin.IN, machine.Pin.PULL_UP)\n` +
          `comando_detectado = 0\n` +
@@ -195,7 +187,10 @@ python.pythonGenerator.forBlock['esp32_listen_on_button'] = function(block, gene
          `            res.close()\n` +
          `        except:\n` +
          `            comando_detectado = 0\n` +
-         branch + '\n' +
+         `        if comando_detectado == 1:\n` +
+         `            machine.Pin(8, machine.Pin.OUT).value(1)\n` +
+         `        if comando_detectado == 2:\n` +
+         `            machine.Pin(8, machine.Pin.OUT).value(0)\n` +
          `        time.sleep(0.5)\n` +
          `    time.sleep(0.1)\n`;
 };
