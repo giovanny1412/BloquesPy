@@ -173,12 +173,11 @@ python.pythonGenerator.forBlock['esp32_listen_on_button'] = function(block, gene
   var btnPin = block.getFieldValue('BTN_PIN');
   var url = block.getFieldValue('URL');
   generator.definitions_['import_urequests'] = 'import urequests';
-  // Asegurar importación de time (por si no está en otro bloque)
   generator.definitions_['import_time'] = 'import time';
 
   // Obtener el código de los bloques conectados al input "DO"
   var branch = generator.statementToCode(block, 'DO');
-  // Añadir un nivel de indentación (4 espacios) a cada línea para que esté dentro del if
+  // Añadir un nivel de indentación (4 espacios) para que quede dentro del if
   branch = generator.prefixLines(branch, generator.INDENT);
 
   var code = 'btn = machine.Pin(' + btnPin + ', machine.Pin.IN, machine.Pin.PULL_UP)\n';
