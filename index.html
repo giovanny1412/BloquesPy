@@ -190,17 +190,18 @@
         }
       };
 
-      python.pythonGenerator.forBlock['esp32_cloud_stt'] = function(block, generator) {
-        var url = block.getFieldValue('URL');
-        // Asegura que 'import urequests' se agregue al inicio del archivo Python, fuera del bucle
-        generator.definitions_['import_urequests'] = 'import urequests';
-
-        return `audio_buffer = bytearray(32000) # ~1s de audio\n` +
-               `audio_in.readinto(audio_buffer)\n` +
-               `res = urequests.post('${url}', data=audio_buffer, headers={'Content-Type': 'audio/raw'})\n` +
-               `comando_detectado = int(res.json().get('comando_id', 0))\n` +
-               `res.close()\n`;
-      };
+     python.pythonGenerator.forBlock['esp32_cloud_stt'] = function(block, generator) {
+       var url = block.getFieldValue('URL');
+       generator.definitions_['import_urequests'] = 'import urequests';
+       return `audio_buffer = bytearray(32000)\n` +
+              `audio_in.readinto(audio_buffer)\n` +
+              `try:\n` +
+              `    res = urequests.post('${url}', data=audio_buffer, headers={'Content-Type': 'audio/raw'})\n` +
+              `    comando_detectado = int(res.json().get('comando_id', 0))\n` +
+              `    res.close()\n` +
+              `except:\n` +
+              `    comando_detectado = 0\n`;
+   };
 
       // Bucle Principal (Loop Infinito)
       Blockly.Blocks['esp32_main_loop'] = {
