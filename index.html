@@ -173,26 +173,37 @@ python.pythonGenerator.forBlock['esp32_listen_on_button'] = function(block, gene
   var btnPin = block.getFieldValue('BTN_PIN');
   var url = block.getFieldValue('URL');
   generator.definitions_['import_urequests'] = 'import urequests';
+  // Asegurar importación de time (por si no está en otro bloque)
+  generator.definitions_['import_time'] = 'import time';
 
-  return `btn = machine.Pin(${btnPin}, machine.Pin.IN, machine.Pin.PULL_UP)\n` +
-         `comando_detectado = 0\n` +
-         `while True:\n` +
-         `    if btn.value() == 0:\n` +
-         `        print("Grabando voz...")\n` +
-         `        audio_buffer = bytearray(32000)\n` +
-         `        audio_in.readinto(audio_buffer)\n` +
-         `        try:\n` +
-         `            res = urequests.post('${url}', data=audio_buffer, headers={'Content-Type': 'audio/raw'})\n` +
-         `            comando_detectado = int(res.json().get('comando_id', 0))\n` +
-         `            res.close()\n` +
-         `        except:\n` +
-         `            comando_detectado = 0\n` +
-         `        if comando_detectado == 1:\n` +
-         `            machine.Pin(8, machine.Pin.OUT).value(1)\n` +
-         `        if comando_detectado == 2:\n` +
-         `            machine.Pin(8, machine.Pin.OUT).value(0)\n` +
-         `        time.sleep(0.5)\n` +
-         `    time.sleep(0.1)\n`;
+  // Obtener el código de los bloques conectados al input "DO"
+  var branch = generator.statementToCode(block, 'DO');
+  // Añadir un nivel de indentación (4 espacios) a cada línea para que esté dentro del if
+  branch = generator.prefixLines(branch, generator.INDENT);
+
+  var code = 'btn = machine.Pin(' + btnPin + ', machine.Pin.IN, machine.Pin.PULL_UP)\n';
+  code += 'comando_detectado = 0\n';
+  code += 'while True:\n';
+  code += '    if btn.value() == 0:\n';
+  code += '        print("Grabando voz...")\n';
+  code += '        audio_buffer = bytearray(32000)\n';
+  code += '        audio_in.readinto(audio_buffer)\n';
+  code += '        try:\n';
+  code += '            res = urequests.post(\'' + url + '\', data=audio_buffer, headers={\'Content-Type\': \'audio/raw\'})\n';
+  code += '            comando_detectado = int(res.json().get(\'comando_id\', 0))\n';
+  code += '            res.close()\n';
+  code += '        except:\n';
+  code += '            comando_detectado = 0\n';
+
+  if (branch) {
+    code += branch; // branch ya está indentado correctamente
+  } else {
+    code += '        pass\n'; // Si no hay bloques, se añade pass para evitar error
+  }
+
+  code += '        time.sleep(0.5)\n';
+  code += '    time.sleep(0.1)\n';
+  return code;
 };
       // Conectar a WiFi
       Blockly.Blocks['esp32_wifi_connect'] = {
