@@ -5,16 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Programador de Bloques ESP32 Audio</title>
   
-  <!-- Carga de versiones estables de Google Blockly y sus bloques por CDN -->
+  <!-- Carga de versiones estables de Google Blockly -->
   <script src="https://unpkg.com/blockly@10.4.3/blockly_compressed.js"></script>
   <script src="https://unpkg.com/blockly@10.4.3/blocks_compressed.js"></script>
   <script src="https://unpkg.com/blockly@10.4.3/python_compressed.js"></script>
   <script src="https://unpkg.com/blockly@10.4.3/msg/es.js"></script>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     body {
       font-family: Arial, sans-serif;
       margin: 0;
@@ -65,10 +63,7 @@
       display: flex;
       flex-direction: column;
     }
-    #codeDiv h3 {
-      margin-top: 0;
-      color: #fff;
-    }
+    #codeDiv h3 { margin-top: 0; color: #fff; }
     pre {
       flex: 1;
       overflow: auto;
@@ -92,10 +87,8 @@
   </header>
 
   <div id="main-container">
-    <!-- Área de trabajo de Blockly -->
     <div id="blocklyDiv"></div>
 
-    <!-- Visor de código Python -->
     <div id="codeDiv">
       <h3>Código MicroPython Generado:</h3>
       <pre id="pythonCode"># Arrastra bloques al panel izquierdo para generar código...</pre>
@@ -106,6 +99,11 @@
   <xml id="toolbox" style="display: none">
     <category name="Configuración" colour="#a55b80">
       <block type="esp32_inmp441_setup"></block>
+    </category>
+    <category name="Conectividad y Nube" colour="#009688">
+      <block type="esp32_wifi_connect"></block>
+      <block type="esp32_cloud_stt"></block>
+      <block type="esp32_main_loop"></block>
     </category>
     <category name="Comandos Voz" colour="#5b67a5">
       <block type="esp32_on_command"></block>
@@ -124,9 +122,9 @@
   <script>
     document.addEventListener("DOMContentLoaded", function() {
 
-      // --- 1. DEFINICIÓN DE BLOQUES PERSONALIZADOS ---
+      // --- 1. DEFINICIÓN DE BLOQUES DE HARDWARE Y NUBE ---
 
-      // Bloque 1: Configurar INMP441
+      // Configurar INMP441
       Blockly.Blocks['esp32_inmp441_setup'] = {
         init: function() {
           this.appendDummyInput()
@@ -152,11 +150,79 @@
                `audio_in = machine.I2S(0, sck=machine.Pin(${sck}), ws=machine.Pin(${ws}), sd=machine.Pin(${sd}), mode=machine.I2S.MASTER_RX, dataformat=machine.I2S.BITS16, format=machine.I2S.MONO, rate=16000, ibuf=10240)\n`;
       };
 
-      // Bloque 2: Evento Al recibir Comando
+      // Conectar a WiFi
+      Blockly.Blocks['esp32_wifi_connect'] = {
+        init: function() {
+          this.appendDummyInput()
+              .appendField("Conectar a WiFi")
+              .appendField("SSID:")
+              .appendField(new Blockly.FieldTextInput("MiRedWiFi"), "SSID")
+              .appendField("Clave:")
+              .appendField(new Blockly.FieldTextInput("12345678"), "PASS");
+          this.setPreviousStatement(true, null);
+          this.setNextStatement(true, null);
+          this.setColour(180);
+        }
+      };
+
+      python.pythonGenerator.forBlock['esp32_wifi_connect'] = function(block, generator) {
+        var ssid = block.getFieldValue('SSID');
+        var pass = block.getFieldValue('PASS');
+        return `import network, time\n` +
+               `wlan = network.WLAN(network.STA_IF)\n` +
+               `wlan.active(True)\n` +
+               `if not wlan.isconnected():\n` +
+               `    wlan.connect('${ssid}', '${pass}')\n` +
+               `    while not wlan.isconnected():\n` +
+               `        time.sleep(0.5)\n`;
+      };
+
+      // Escuchar Audio y Enviar a la Nube (API STT)
+      Blockly.Blocks['esp32_cloud_stt'] = {
+        init: function() {
+          this.appendDummyInput()
+              .appendField("Escuchar Voz y Procesar en Nube (API)")
+              .appendField("URL API:")
+              .appendField(new Blockly.FieldTextInput("https://api.tu-servidor.com/stt"), "URL");
+          this.setPreviousStatement(true, null);
+          this.setNextStatement(true, null);
+          this.setColour(180);
+        }
+      };
+
+      python.pythonGenerator.forBlock['esp32_cloud_stt'] = function(block, generator) {
+        var url = block.getFieldValue('URL');
+        return `import urequests\n` +
+               `audio_buffer = bytearray(32000) # ~1s de audio\n` +
+               `audio_in.readinto(audio_buffer)\n` +
+               `res = urequests.post('${url}', data=audio_buffer, headers={'Content-Type': 'audio/raw'})\n` +
+               `comando_detectado = int(res.json().get('comando_id', 0))\n` +
+               `res.close()\n`;
+      };
+
+      // Bucle Principal (Loop Infinito)
+      Blockly.Blocks['esp32_main_loop'] = {
+        init: function() {
+          this.appendDummyInput()
+              .appendField("Repetir continuamente (Bucle Principal)");
+          this.appendStatementInput("DO")
+              .appendField("Hacer:");
+          this.setPreviousStatement(true, null);
+          this.setNextStatement(true, null);
+          this.setColour(180);
+        }
+      };
+
+      python.pythonGenerator.forBlock['esp32_main_loop'] = function(block, generator) {
+        var branch = generator.statementToCode(block, 'DO');
+        return `comando_detectado = 0\nwhile True:\n` + (branch || '    pass\n');
+      };
+
+      // Evento Al recibir Comando
       Blockly.Blocks['esp32_on_command'] = {
         init: function() {
           this.appendDummyInput()
-              .appendField("Al recibir Comando Voz número:")
+              .appendField("Si Comando de Voz es igual a:")
               .appendField(new Blockly.FieldNumber(1, 1, 10), "CMD_NUM");
           this.appendStatementInput("DO")
               .appendField("Hacer:");
@@ -172,7 +238,7 @@
         return `if comando_detectado == ${cmdNum}:\n` + (branch || '    pass\n');
       };
 
-      // Bloque 3: Salida Digital
+      // Salida Digital
       Blockly.Blocks['esp32_digital_write'] = {
         init: function() {
           this.appendDummyInput()
@@ -192,7 +258,7 @@
         return `machine.Pin(${pin}, machine.Pin.OUT).value(${state})\n`;
       };
 
-      // Bloque 4: Salida Analógica (PWM)
+      // Salida Analógica (PWM)
       Blockly.Blocks['esp32_analog_write'] = {
         init: function() {
           this.appendDummyInput()
@@ -216,20 +282,15 @@
       var workspace = Blockly.inject('blocklyDiv', {
         toolbox: document.getElementById('toolbox'),
         scrollbars: true,
-        zoom: {
-          controls: true,
-          wheel: true
-        }
+        zoom: { controls: true, wheel: true }
       });
 
-      // Actualizador de código Python
       function updateCode() {
         var code = python.pythonGenerator.workspaceToCode(workspace);
         document.getElementById('pythonCode').textContent = code || "# Arrastra bloques al panel izquierdo para generar código...";
       }
       workspace.addChangeListener(updateCode);
 
-      // Reajustar tamaño si cambia la ventana
       window.addEventListener('resize', function() {
         Blockly.svgResize(workspace);
       });
@@ -239,13 +300,12 @@
 
       document.getElementById('btnConnect').addEventListener('click', async () => {
         if (!("serial" in navigator)) {
-          alert("Tu navegador no soporta Web Serial API. Por favor usa Google Chrome o Microsoft Edge.");
+          alert("Tu navegador no soporta Web Serial API. Usa Google Chrome o Microsoft Edge.");
           return;
         }
         try {
           port = await navigator.serial.requestPort();
           await port.open({ baudRate: 115200 });
-          
           document.getElementById('btnConnect').innerText = "✓ ESP32 Conectada";
           document.getElementById('btnConnect').style.backgroundColor = "#2196F3";
           document.getElementById('btnUpload').disabled = false;
@@ -263,14 +323,13 @@
         const writer = port.writable.getWriter();
 
         try {
-          // Secuencia de comandos REPL MicroPython
-          await writer.write(encoder.encode("\x03")); // Interrupt
+          await writer.write(encoder.encode("\x03")); // Interrupt (Ctrl+C)
           await new Promise(r => setTimeout(r, 200));
-          await writer.write(encoder.encode("\x05")); // Enter Raw/Paste mode
+          await writer.write(encoder.encode("\x05")); // Enter Paste mode (Ctrl+E)
           await new Promise(r => setTimeout(r, 200));
-          await writer.write(encoder.encode(code));   // Paste Code
+          await writer.write(encoder.encode(code));   // Transmitir código
           await new Promise(r => setTimeout(r, 200));
-          await writer.write(encoder.encode("\x04")); // Execute
+          await writer.write(encoder.encode("\x04")); // Execute (Ctrl+D)
 
           alert("¡Código enviado con éxito a la ESP32!");
         } catch (err) {
