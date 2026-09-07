@@ -150,6 +150,47 @@
                `audio_in = machine.I2S(0, sck=machine.Pin(${sck}), ws=machine.Pin(${ws}), sd=machine.Pin(${sd}), mode=machine.I2S.MASTER_RX, dataformat=machine.I2S.BITS16, format=machine.I2S.MONO, rate=16000, ibuf=10240)\n`;
       };
 
+      // --- NUEVO BLOQUE: Escuchar al presionar botón ---
+Blockly.Blocks['esp32_listen_on_button'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Al mantener presionado Botón en Pin:")
+        .appendField(new Blockly.FieldNumber(12), "BTN_PIN");
+    this.appendDummyInput()
+        .appendField("Enviar audio a URL:")
+        .appendField(new Blockly.FieldTextInput("http://192.168.1.15:5000/stt"), "URL");
+    this.appendStatementInput("DO")
+        .appendField("Y evaluar comandos:");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(180);
+  }
+};
+
+python.pythonGenerator.forBlock['esp32_listen_on_button'] = function(block, generator) {
+  var btnPin = block.getFieldValue('BTN_PIN');
+  var url = block.getFieldValue('URL');
+  var branch = generator.statementToCode(block, 'DO');
+  generator.definitions_['import_urequests'] = 'import urequests';
+
+  return `btn = machine.Pin(${btnPin}, machine.Pin.IN, machine.Pin.PULL_UP)\n` +
+         `comando_detectado = 0\n` +
+         `while True:\n` +
+         `    if btn.value() == 0: # Botón presionado\n` +
+         `        print("Grabando voz...")\n` +
+         `        audio_buffer = bytearray(32000) # Graba 1 segundo de audio\n` +
+         `        audio_in.readinto(audio_buffer)\n` +
+         `        try:\n` +
+         `            res = urequests.post('${url}', data=audio_buffer, headers={'Content-Type': 'audio/raw'})\n` +
+         `            comando_detectado = int(res.json().get('comando_id', 0))\n` +
+         `            res.close()\n` +
+         `        except:\n` +
+         `            comando_detectado = 0\n` +
+         (branch ? generator.prefixLines(branch, '        ') : '        pass\n') +
+         `        time.sleep(0.5) # Anti-rebote\n` +
+         `    time.sleep(0.1)\n`;
+}; 
+      
       // Conectar a WiFi
       Blockly.Blocks['esp32_wifi_connect'] = {
         init: function() {
