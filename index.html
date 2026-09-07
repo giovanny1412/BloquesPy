@@ -172,19 +172,26 @@ Blockly.Blocks['esp32_listen_on_button'] = {
 python.pythonGenerator.forBlock['esp32_listen_on_button'] = function(block, generator) {
   var btnPin = block.getFieldValue('BTN_PIN');
   var url = block.getFieldValue('URL');
-  
-  // Captura el código generado por los bloques anidados dentro de "Y evaluar comandos:"
-  var innerCode = generator.statementToCode(block, 'DO');
+
   generator.definitions_['import_urequests'] = 'import urequests';
 
-  // Si no hay bloques adentro, ponemos un pass
-  if (!innerCode || innerCode.trim() === '') {
+  // IMPORTANTE: usamos blockToCode() (no statementToCode()) para obtener el
+  // código de los bloques anidados SIN el nivel de indentación automática que
+  // Blockly agrega en statementToCode(). Si usáramos statementToCode() y luego
+  // sumáramos 8 espacios a mano, quedaría doble-indentado (el nivel automático
+  // de Blockly + los 8 espacios manuales), produciendo una indentación que no
+  // coincide con ningún nivel válido y provocando IndentationError en Python.
+  var targetBlock = block.getInputTargetBlock('DO');
+  var innerRaw = targetBlock ? generator.blockToCode(targetBlock) : '';
+  if (Array.isArray(innerRaw)) innerRaw = innerRaw[0];
+
+  var innerCode;
+  if (!innerRaw || !innerRaw.trim()) {
     innerCode = '        pass\n';
   } else {
-    // Indentamos 8 espacios cada línea generada por los bloques hijos
-    innerCode = innerCode.split('\n')
-      .map(line => line.trim() ? '        ' + line : '')
-      .join('\n');
+    // prefixLines() de Blockly agrega el prefijo solo a líneas no vacías,
+    // preservando la indentación relativa que ya traían los bloques hijos.
+    innerCode = generator.prefixLines(innerRaw, '        ');
   }
 
   return `btn = machine.Pin(${btnPin}, machine.Pin.IN, machine.Pin.PULL_UP)\n` +
